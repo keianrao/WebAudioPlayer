@@ -33,6 +33,7 @@
 			methods: {
 				fileLoad: function() {
 					this.$emit('load', this.fileInput.files[0]);
+					this.fileInput.value = this.fileInput.defaultValue;
 				}
 			}
 		});
@@ -43,34 +44,80 @@
 				<div class="player">
 					<!-- We need some sort of seek. -->
 					<!-- Sans album art? -->
-					<button class="stop">Stop</button>
-					<button class="pause">Pause</button>
+					<button class="stop" @click="stop">
+						Stop
+					</button>
+					<button class="pause" @click="pause" v-if="playing">
+						Pause
+					</button>
+					<button class="resume" @click="play" v-else>
+						Resume
+					</button>
 					<!--
 					We will probably use images in stead, later.
 					-->
 				</div>
 			`,
+			data: function() {
+				return {
+					audioContext: null,
+					audioSourceNode: null,
+					playing: false
+				};
+			},
 			methods: {
+				initAudioSystem: function() {
+					this.audioContext = new AudioContext();
+				},
+				initAudio: function() {
+					this.audiofile.arrayBuffer()
+						.catch(this.arrayBufferFetchFail)
+						.then(this.audioDataDecode)
+						.catch(this.audioDataDecodeFail)
+						.then(this.connectAudio);
+				},
+				arrayBufferFetchFail: function(error) {
+					window.alert(error);
+				},
+				audioDataDecode: function(arrayBuffer) {
+					return this.audioContext.decodeAudioData(arrayBuffer);
+				},
+				audioDataDecodeFail: function(error) {
+					window.alert(error);
+				},
+				connectAudio: function(decodedData) {
+					let src = this.audioContext.createBufferSource();
+					src.buffer = decodedData;
+					
+					let dst = this.audioContext.destination;
+					src.connect(dst);
+					this.audioSourceNode = src;
+					
+					src.start();
+				},
 				pause: function() {
-					// Stop playback, somehow.
+					this.audioContext.suspend();
+					this.playing = false;
 				},
 				play: function() {
-					// If paused, simply resume playback.
-					// If stopped (how do we know?), load the audio buffers
-					// with our audio file.
-					//
-					// We probably need AudioContext, AudioNode, and
-					// AudioBuffer. Apparently BaseAudioContext.destination
-					// is already set, as a usable AudioNode representing
-					// the browser's audio output.
+					this.audioContext.resume();
+					this.playing = true;
 				},
 				stop: function() {
-					// Drain our audio buffers.
+					this.pause();
+					if (this.audioSourceNode != null) {
+						this.audioSourceNode.stop();
+						this.audioSourceNode = null;
+					}
 				}
 			},
 			watch: {
 				"audiofile": function() {
+					if (this.audioContext == null) this.initAudioSystem();
+				
 					this.stop();
+					
+					this.initAudio();
 					this.play();
 				}
 			}
