@@ -1,0 +1,126 @@
+<!DOCTYPE HTML>
+<HTML>
+
+	<META CHARSET="utf-8" />
+	
+	<DIV ID="vue">
+		<FILE-IO @LOAD="audiofile = $event"></FILE-IO>
+		<PLAYER :AUDIOFILE="audiofile"></PLAYER>
+	</DIV>
+
+	<SCRIPT SRC="/usr/share/javascript/vue/vue.js"></SCRIPT>
+	<SCRIPT>
+		// For once, I'm going to be using 'let' instead of 'var'.
+		
+		Vue.component('file-io', {
+			template: `
+				<div class="file-io">
+					<button class="load" @click="fileInput.click()">
+						{{ loadLabel }}
+					</button>
+				</div>
+			`,
+			data: function() {
+				const fileInput = document.createElement("input");
+				fileInput.setAttribute('type', "file");
+				fileInput.addEventListener('change', this.fileLoad);
+				
+				return {
+					loadLabel: "Open local audio file",
+					fileInput: fileInput
+				};
+			},
+			methods: {
+				fileLoad: function() {
+					this.$emit('load', this.fileInput.files[0]);
+				}
+			}
+		});
+		
+		Vue.component('player', {
+			props: [ 'audiofile' ],
+			template: `
+				<div class="player">
+					<!-- We need some sort of seek. -->
+					<!-- Sans album art? -->
+					<button class="stop">Stop</button>
+					<button class="pause">Pause</button>
+					<!--
+					We will probably use images in stead, later.
+					-->
+				</div>
+			`,
+			methods: {
+				pause: function() {
+					// Stop playback, somehow.
+				},
+				play: function() {
+					// If paused, simply resume playback.
+					// If stopped (how do we know?), load the audio buffers
+					// with our audio file.
+					//
+					// We probably need AudioContext, AudioNode, and
+					// AudioBuffer. Apparently BaseAudioContext.destination
+					// is already set, as a usable AudioNode representing
+					// the browser's audio output.
+				},
+				stop: function() {
+					// Drain our audio buffers.
+				}
+			},
+			watch: {
+				"audiofile": function() {
+					this.stop();
+					this.play();
+				}
+			}
+		});
+		
+		/*
+		Vue isn't exactly like Qt.. we can't seem to arbitrarily connect
+		events between components. Not even having the parent component be
+		a controller of its children solves it, because how do we get
+		references to those rendered child components..?
+		
+		The component template has a root element, but if you grab that
+		(e.g. using document.getElementsByClassName), it's just a DOM element,
+		it's not the Vue instance with the data and methods backing it.
+		
+		Reading on the matter, it seems like props and events are both
+		used for one-way data communication. And that they're indeed
+		the normal way. And, if I want to run code with side effects
+		upon a property change, I should use watchers..
+		*/
+		
+		new Vue({
+			el: "#vue",
+			data: {
+				audiofile: null
+			}
+		});
+	</SCRIPT>
+	
+	<STYLE>
+		html {
+			height: 100%;
+			background: linear-gradient(#E0E0E0, white);
+		}
+		
+		#vue {
+			text-align: center;
+		}
+		
+		.file-io {
+			padding: 8px;
+			margin: 4px auto;
+			border: 2px inset #FFFFFF40;
+		}
+		
+		.player {
+			padding: 8px;
+			margin: 4px auto;
+			border: 1px solid #00000010;
+		}
+	</STYLE>
+
+</HTML>
