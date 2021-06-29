@@ -1,4 +1,22 @@
 <!DOCTYPE HTML>
+<!--
+WebAudioPlayer - Basically a basic test of the Web Audio API
+©2021 Keian Rao <keian.rao@gmail.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <HTML>
 
 	<META CHARSET="utf-8" />
@@ -44,14 +62,17 @@
 				<div class="player">
 					<!-- We need some sort of seek. -->
 					<!-- Sans album art? -->
-					<button class="stop" @click="stop">
-						Stop
+					<button class="stop" @click="stop"
+							:disabled="this.audioContext == null">
+						<img src="stop.png" width="24px" alt="Stop"></img>
 					</button>
 					<button class="pause" @click="pause" v-if="playing">
-						Pause
+						<img src="pause.png" alt="Pause"></img>
 					</button>
-					<button class="resume" @click="play" v-else>
-						Resume
+					<button class="resume" @click="play"
+							:disabled="this.audioContext == null"
+							v-else>
+						<img src="play.png" alt="Play"></img>
 					</button>
 					<!--
 					We will probably use images in stead, later.
@@ -100,6 +121,8 @@
 					this.playing = false;
 				},
 				play: function() {
+					if (this.audioSourceNode == null) this.initAudio();
+					
 					this.audioContext.resume();
 					this.playing = true;
 				},
@@ -114,10 +137,20 @@
 			watch: {
 				"audiofile": function() {
 					if (this.audioContext == null) this.initAudioSystem();
+					/*
+					* It's better to init in the 'mounted' lifecycle hook,
+					* but Chromium disallows instantiating an AudioContext
+					* before the first user gesture. So we have to lazily
+					* create it.
+					*
+					* (And since I presently can't grab child elements of
+					* this component to go and remove the 'disabled' attribute,
+					* we have a v-bind:disabled on our player buttons, just
+					* for this situation of the audio system never having
+					* been initialised.)
+					*/
 				
-					this.stop();
-					
-					this.initAudio();
+					this.stop();					
 					this.play();
 				}
 			}
@@ -160,13 +193,11 @@
 		.file-io {
 			padding: 8px;
 			margin: 4px auto;
-			border: 2px inset #FFFFFF40;
 		}
 		
 		.player {
 			padding: 8px;
 			margin: 4px auto;
-			border: 1px solid #00000010;
 		}
 	</STYLE>
 
