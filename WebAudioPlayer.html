@@ -22,8 +22,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 	<META CHARSET="utf-8" />
 	
 	<DIV ID="vue">
-		<FILE-IO @LOAD="audiofile = $event"></FILE-IO>
-		<PLAYER :AUDIOFILE="audiofile"></PLAYER>
+		<FILE-IO REF="fileIO" @LOAD="$refs.player.playFile($event)"></FILE-IO>
+		<PLAYER REF="player"></PLAYER>
 	</DIV>
 
 	<SCRIPT SRC="/usr/share/javascript/vue/vue.js"></SCRIPT>
@@ -103,64 +103,34 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 					this.audio.removeAttribute("src");
 					this.audio.load();
 					this.eggplantsOrTomatoes = !this.eggplantsOrTomatoes;
-				}
-			},
-			computed: {
-				"playing": function() {
-					return(
-						(this.eggplantsOrTomatoes || true)
-						&& !this.stopped && !this.audio.paused
-					);
 				},
-				"paused": function() {
-					return(
-						(this.eggplantsOrTomatoes || true)
-						&& !this.stopped && this.audio.paused
-					);
-				},
-				"stopped": function() {
-					return(
-						(this.eggplantsOrTomatoes || true)
-						&& !this.audio.hasAttribute("src")
-					);
-				}
-			},
-			watch: {
-				"audiofile": function() {
-					let bloburl = URL.createObjectURL(this.audiofile);
+				"playFile": function(audioFile) {
+					let bloburl = URL.createObjectURL(audioFile);
 					this.stop();
 					this.audio.setAttribute("src", bloburl);
 					this.play();
 				}
+			},
+			computed: {
+				"playing": function() {
+					this.eggplantsOrTomatoes;
+					return !this.stopped && !this.audio.paused;
+				},
+				"paused": function() {
+					this.eggplantsOrTomatoes;
+					return !this.stopped && this.audio.paused;
+				},
+				"stopped": function() {
+					this.eggplantsOrTomatoes;
+					return !this.audio.hasAttribute("src");
+				}
+			},
+			watch: {
+				"audiofile": function() {
+					this.useAudioFile(this.audiofile);
+				}
 			}
 		});
-		
-		/*
-		Vue isn't exactly like Qt.. we can't seem to arbitrarily connect
-		events between components. Not even having the parent component be
-		a controller of its children solves it, because how do we get
-		references to those rendered child components..?
-		
-		The component template has a root element, but if you grab that
-		(e.g. using document.getElementsByClassName), it's just a DOM element,
-		it's not the Vue instance with the data and methods backing it.
-		
-		Reading on the matter, it seems like props and events are both
-		used for one-way data communication. And that they're indeed
-		the normal way. And, if I want to run code with side effects
-		upon a property change, I should use watchers..
-		*/
-		/*
-		Apparently there is the 'ref' special attribute, which I can use
-		to access DOM elements or child Vue instances.
-		
-		The docs say refs are not reactive, "therefore you should not
-		attempt to use it in templates for data-binding". I'm not exactly
-		sure what they mean by that, but I don't think I have to worry.
-		
-		Also, I can probably do $el.getElementBySomeMeans, which I will
-		try out now, in stead of refs.
-		*/
 		
 		new Vue({
 			el: "#vue",
