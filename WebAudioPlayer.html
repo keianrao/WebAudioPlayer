@@ -22,7 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 	<META CHARSET="utf-8" />
 	
 	<DIV ID="vue">
-		<FILE-IO REF="fileIO" @LOAD="$refs.player.playFile($event)"></FILE-IO>
+		<FILE-IO @LOAD="$refs.player.playFile($event)"></FILE-IO>
 		<PLAYER REF="player"></PLAYER>
 	</DIV>
 
@@ -57,27 +57,28 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 		});
 		
 		Vue.component('player', {
-			props: [ 'audiofile' ],
 			template: `
 				<div class="player">
 					<div>
-						<label class="seek-label">0:00</label>
-						<input class="seek"
-							type="range" min="0" step="1" value="0"
-							:disabled="stopped" />
+						<label class="seek-label">{{ timestamp }}</label>
+						<br>
+						<input class="seek" @input="seek($event)"
+							type="range" min="0" step="1"
+							:max="seekMax" :value="seekValue"
+							:disabled="stopped()" />
 					</div>
 					<!-- Sans album art? -->
 					<div>
 						<button class="stop" @click="stop"
-								:disabled="stopped">
+								:disabled="stopped()">
 							<img src="stop.png" width="24px" alt="Stop"></img>
 						</button>
 						<button class="pause" @click="pause"
-								v-if="playing">
+								v-if="playing()">
 							<img src="pause.png" alt="Pause"></img>
 						</button>
 						<button class="resume" @click="play"
-								:disabled="!paused"
+								:disabled="!paused()"
 								v-else>
 							<img src="play.png" alt="Play"></img>
 						</button>
@@ -86,58 +87,78 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 			`,
 			data: function() {
 				return {
-					audio: new Audio(),
-					eggplantsOrTomatoes: false
+					audio: null,
+					seekMax: null,
+					seekValue: null,
+					timestamp: null
 				};
+			},
+			created: function() {
+				this.audio = new Audio();
+				this.audio.addEventListener('timeupdate', this.updateSeek);
+				this.audio.addEventListener('ended', this.stop);
+				this.updateSeek();
 			},
 			methods: {
 				"play": function() {
 					this.audio.play();
-					this.eggplantsOrTomatoes = !this.eggplantsOrTomatoes;
 				},
 				"pause": function() {
 					this.audio.pause();
-					this.eggplantsOrTomatoes = !this.eggplantsOrTomatoes;
 				},
 				"stop": function() {
 					this.audio.removeAttribute("src");
 					this.audio.load();
-					this.eggplantsOrTomatoes = !this.eggplantsOrTomatoes;
 				},
 				"playFile": function(audioFile) {
 					let bloburl = URL.createObjectURL(audioFile);
 					this.stop();
 					this.audio.setAttribute("src", bloburl);
 					this.play();
-				}
-			},
-			computed: {
+				},
+				"updateSeek": function() {
+					if (this.stopped()) {
+						this.timestamp = "(no song)";
+						
+						this.seekMax = 0;
+						this.seekValue = 0;
+					}
+					else {
+						let time = this.audio.currentTime;
+						let duration = this.audio.duration;
+						
+						let timeSeconds = Math.floor(time % 60);
+						let timeMinutes = Math.floor(time / 60);
+						let durSeconds = Math.floor(duration % 60);
+						let durMinutes = Math.floor(duration / 60);
+						
+						let s1 = ("" + timeMinutes);
+						let s2 = ("" + timeSeconds).padStart(2, "0");
+						let s3 = ("" + durMinutes);
+						let s4 = ("" + durSeconds).padStart(2, "0");
+						this.timestamp = `${s1}:${s2} / ${s3}:${s4}`;
+						
+						this.seekMax = duration;
+						this.seekValue = time;
+					}
+				},
+				"seek": function(inputEvent) {
+					this.audio.currentTime = inputEvent.target.value;
+					// A bit unsafe, but eh. This whole app is..
+				},
 				"playing": function() {
-					this.eggplantsOrTomatoes;
-					return !this.stopped && !this.audio.paused;
+					return !this.stopped() && !this.audio.paused;
 				},
 				"paused": function() {
-					this.eggplantsOrTomatoes;
-					return !this.stopped && this.audio.paused;
+					return !this.stopped() && this.audio.paused;
 				},
 				"stopped": function() {
-					this.eggplantsOrTomatoes;
 					return !this.audio.hasAttribute("src");
-				}
-			},
-			watch: {
-				"audiofile": function() {
-					this.useAudioFile(this.audiofile);
 				}
 			}
 		});
 		
-		new Vue({
-			el: "#vue",
-			data: {
-				audiofile: null
-			}
-		});
+		new Vue({ el: "#vue" });
 	</SCRIPT>
 	
 	<STYLE>
@@ -156,8 +177,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 		}
 		
 		.player {
+			display: inline-block;
 			padding: 8px;
 			margin: 4px auto;
+			border: 2px inset #00000020;
+		}
+		.player .seek-label {
+			font-family: monospace;
+			font-size: large;
 		}
 		.player .seek {
 			width: 320px;
